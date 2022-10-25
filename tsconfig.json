@@ -1,25 +1,25 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
-    "module": "es2022",
+    "target": "ESNext",
+    "module": "esnext",
     "lib": ["dom", "esnext"],
     "outDir": "./build",
-    "rootDir": ".",
+    "rootDir": "./src",
+    "useDefineForClassFields": false,
+    "declaration": true,
     "strict": true,
     "strictPropertyInitialization": false, // to enable generic constructors, e.g. on CircuitValue
+    "allowJs": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "allowJs": true,
-    "declaration": true,
     "sourceMap": false,
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true
   },
-  "include": ["./src"],
+  "include": ["./src/**/*.ts"],
   "exclude": ["./src/**/*.test.ts"]
 }
