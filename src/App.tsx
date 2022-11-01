@@ -1,102 +1,162 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import geohash from 'ngeohash';
-import { Box } from '@mui/material';
+import { Backdrop, Box, CircularProgress } from '@mui/material';
+import { CheckinInterface, deployApp, LocationCheck } from './CheckIn.js';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faLocationDot } from '@fortawesome/free-solid-svg-icons'
+
+let CheckIn; // this will hold the dynamically imported './sudoku-zkapp.ts'
+
+ReactDOM.render(<App />, document.querySelector('#root'));
 
 function App() {
   const [lat, setLat] = useState<any | null>(null);
   const [lng, setLng] = useState<any | null>(null);
-  const [geoHash, setGeoHash] = useState<any | null>(null);
-  const [geoHashInt, setGeoHashInt] = useState<any | null>(null);
+  // const [geoHash, setGeoHash] = useState<any | null>(null);
+  // const [geoHashInt, setGeoHashInt] = useState<any | null>(null);
+  let [zkapp, setZkapp] = useState();
+  let [isLoading, setLoading] = useState(false);
+  let [isFirstRender, setFirstRender] = useState(true);
+  let [showSubmissionSuccess, setSubmissionSuccess] = useState(false);
+  let [showSubmissionError, setSubmissionError] = useState(false);
+
+  useEffect(() => {
+    // 👇️ only runs once
+    console.log('useEffect ran');
+
+    async function deploy() {
+      if (!isFirstRender) return;
+      setFirstRender(true);
+      CheckIn = await import('../build/CheckIn.js');
+      let zkapp = await CheckIn.deployApp();
+      setZkapp(zkapp);
+      setFirstRender(false);
+      console.log('Initial state checkedIn '+zkapp.getState().checkedIn);
+      console.log('Initial state targetGeoHash '+zkapp.getState().targetGeoHash);
+      console.log(zkapp);
+    }
+
+    deploy();
+  }, []);
 
   const shareLocation = () => {
+    if (showSubmissionError) {
+      setSubmissionError(false);
+    }
     navigator.geolocation.getCurrentPosition((position) => {
       console.log('Latitude is :', position.coords.latitude);
       console.log('Longitude is :', position.coords.longitude);
       setLat(position.coords.latitude);
       setLng(position.coords.longitude);
-      setGeoHash(
-        geohash.encode(position.coords.latitude, position.coords.longitude, 9)
-      );
-      setGeoHashInt(
-        geohash.encode_int(
-          position.coords.latitude,
-          position.coords.longitude,
-          9
-        )
-      );
-
-      // Latitude: 48.208492 Longitude: 16.373755
-      let center_geohash = geohash.encode(48.20849, 16.373755, 9);
-      console.log('vienna viennaCenter geohash :', center_geohash);
-      let viennaCenter = geohash.neighbors(center_geohash);
-      console.log('vienna viennaCenter + neighbours :', viennaCenter);
-      let center_geohash_int = geohash.encode_int(48.20849, 16.373755);
-      console.log('vienna viennaCenter geohash int:', center_geohash_int);
-      let viennaCenter_neighbours_int =
-        geohash.neighbors_int(center_geohash_int);
-      console.log(
-        'vienna viennaCenter_neighbours_int :',
-        viennaCenter_neighbours_int
-      );
+      // setGeoHashInt(
+      //   geohash.encode_int(
+      //     position.coords.latitude,
+      //     position.coords.longitude,
+      //     9
+      //   )
+      // );
     });
   };
 
-  function submit() {
-    console.log('Hello!');
+  const submit = async (zkapp: CheckinInterface) => {
+    console.log('Submitting location: '+lat+','+lng);
+    setLoading(true);
+    // uncomment line below to test happy path
+    // let location = new CheckIn.LocationCheck(48.208487, 16.372571);
+    let location = new CheckIn.LocationCheck(48.208487, 16.372571);
+    await zkapp.checkIn(location);
+    let checkin = zkapp?.getState().checkedIn;
+    if (checkin) {
+      setSubmissionSuccess(true);
+    } else {
+      setSubmissionError(true);
+      setLat(null);
+      setLng(null);
+    }
+    setLoading(false);
   }
 
   return (
-    <Container fixed>
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="50vh"
+    <>
+    <div>
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={isLoading || isFirstRender}
       >
-        <p className="riddle">Some question on sharing location ... </p>
-        <Button
-          variant="contained"
-          onClick={shareLocation}
-          style={{ backgroundColor: 'grey' }}
-        >
-          Share Location
-        </Button>
-      </Box>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+    </div>
+    <div>
+        <Container fixed>
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="50vh"
+          >
+            <p className="riddle">Some question on sharing location ... </p>
+          </Box>
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="10vh"
+          >
+            <p>
+              Solve by sharing your location 👉 <FontAwesomeIcon icon={faLocationDot} onClick={shareLocation} style={{color: '#ffafbd'}} size="2x" />
+            </p>
+          </Box>
+          {!showSubmissionError && !showSubmissionSuccess && <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="20vh"
+          >
+            <p>
+              {lat && <p>Latitude: {lat}, </p>}
+              {lng && <p>Longitude: {lng}</p>}
+            </p>
+            <p style={{ marginLeft: '20px', marginTop: '10px' }}>
+              {lat && lng && (
+                <Button
+                  variant="contained"
+                  onClick={()=>{
+                    submit(zkapp);
+                  }}
+                  style={{ backgroundColor: '#ffafbd' }}
+                >
+                  Submit solution
+                </Button>
+              )}
+            </p>
+          </Box>}
 
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="20vh"
-      >
-        <p>
-          {lat && <p>Latitude: {lat}, </p>}
-          {lng && <p>Longitude: {lng}</p>}
-        </p>
-      </Box>
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="20vh"
-      >
-        <p style={{ marginTop: '10px' }}>
-          {lat && lng && (
-            <Button
-              variant="contained"
-              onClick={submit}
-              style={{ backgroundColor: 'grey' }}
-            >
-              Submit solution
-            </Button>
-          )}
-        </p>
-      </Box>
-    </Container>
+          {showSubmissionError && <Box component="div"
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="20vh"
+          >
+            <p className="submission-error">
+              Wrong Location, try again!
+            </p>
+      </Box>}
+
+      {showSubmissionSuccess && <Box component="div"
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="20vh"
+          >
+            <p className="submission-error">
+              Nice one! 
+            </p>
+      </Box>}
+
+        </Container>
+      </div>
+      </>
   );
 }
-
-ReactDOM.render(<App />, document.querySelector('#root'));

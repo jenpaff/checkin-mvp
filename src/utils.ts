@@ -12,6 +12,9 @@ export function is_in_valid_range(
   const neighbours: Field[] = geohash
     .neighbors_int(geoHashInt)
     .map((n) => Field.fromNumber(n));
+  
+  console.log('targetGeoHash '+targetGeoHash);
+  console.log('sharedGeoHash '+sharedGeoHash);
 
   // check if geoHashInt is equal to our incoming geohash or equal one of the neightbours
   let valid = Bool.or(
